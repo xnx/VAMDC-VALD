@@ -58,6 +58,7 @@ RETURNABLES = {
 #'MoleculeNuclearSpinsAtomArray':'Molecule.',
 #'MoleculeNuclearSpinsBondArray':'Molecule.',
 'MoleculeSpeciesID':'Molecule.id',
+'MoleculeStructure': 'Molecule',    # we have an XML() method for this
 
 #'MoleculeStateCharacLifeTime':'MoleculeState.',
 #'MoleculeStateCharacNuclearSpinSymmetry':'MoleculeState.',
@@ -71,7 +72,7 @@ RETURNABLES = {
 #'MoleculeStateQuantumNumbers':'MoleculeState.parsed_qns',
 'MoleculeStateQuantumNumbers':'MoleculeState',
 'MoleculeStoichiometricFormula':'Molecule.molecule.stoichiometricformula',
-'MoleculeOrdinaryStructuralFormula':'Molecule.molecule.structuralformula',
+'MoleculeOrdinaryStructuralFormula':'Molecule.isotopolog',
 'MoleculeComment': 'Molecule.name',
 'MoleculeQnStateID': 'MolQN.stateid', # <- new
 'MoleculeQnCase': 'MolQN.case',       # <- new 
@@ -142,6 +143,7 @@ RETURNABLES = {
 #'SourceURI':'Source.',
 'SourceVolume':'Source.vol',
 'SourceYear':'Source.year',
+'SourceDOI':'Source.doi'
 }
 
 
@@ -183,7 +185,7 @@ RESTRICTABLES = {
 'MoleculeStateEnergy':'lowerstateref__energy',
 #'MoleculeStateID':'',
 'MoleculeStoichiometricFormula':'species__molecule__stoichiometricformula',
-'MoleculeOrdinaryStructuralFormula':'species__molecule__stoichiometricformula',
+'MoleculeOrdinaryStructuralFormula':'species__isotopolog',
 #'NonRadTranEnergy':'',
 #'NonRadTranProbability':'',
 #'NonRadTranWidth':'',
