@@ -45,6 +45,23 @@ def getSpeciesWithStates(transs,addAtomStates,addMoleStates):
 
     return atoms,molecules,nspecies,nstates
 
+def getMethods():
+    "Define and map the methods of VALD to xsams equivalents. Store on object for easy access through dictionary"
+    class Method(object):
+        # OBSTYPE_DICT = {'exp':0, 'obs':1, 'emp':2, 'pred':3, 'calc':4, 'mix':5}
+        CATEGORY_DICT = {0:'experiment', 1:'semiempirical', 2:'derived', 3:'theory',4:'semiempirical',5:'compilation'}
+        DESC_DICT = {0: "VALD exp - transition between levels with experimentally known energies",
+                     1: "VALD obs - transition between levels with experimentally known energies",
+                     2: "VALD emp - relativistic Hartree-Fock calculations, normalized to the experimental lifetimes",
+                     3: "VALD pred - transitions between predicted energy levels",
+                     4: "VALD calc - relativistic Hartree-Fock calculations of lifetimes and transition probabilities",
+                     5: "VALD mix - mixture of observation times"}
+        def __init__(self, ID):                        
+            self.id = ID
+            self.category = self.CATEGORY_DICT[ID]
+            self.description = self.DESC_DICT[ID]
+    return (Method(0), Method(1), Method(2), Method(3), Method(4), Method(5))
+
 def setupResults(sql):
     q = sql2Q(sql)
     log.debug('Just ran sql2Q(sql); setting up QuerySets now.')
@@ -52,12 +69,11 @@ def setupResults(sql):
     ntranss=transs.count()
     if TRANSLIM < ntranss and (not sql.requestables or 'radiative' in sql.requestables):
         percentage = '%.1f'%(float(TRANSLIM)/ntranss *100)
-        transs = transs.order_by('wave')
+        #transs = transs.order_by('wave')
         newmax = transs[TRANSLIM].wave
         transs = Transition.objects.filter(q,Q(wave__lt=newmax))
         log.debug('Truncated results to %s, i.e %s A.'%(TRANSLIM,newmax))
     else: percentage=None
-    ntranss=transs.count()
     log.debug('Transitions QuerySet set up. References next.')
     #refIDs = set( transs.values_list('wave_ref_id','loggf_ref_id','gammarad_ref_id','gammastark_ref_id','waals_ref') )
     #sources = Reference.objects.filter(pk__in=refIDs)
@@ -67,6 +83,8 @@ def setupResults(sql):
     addAtomStates = (not sql.requestables or 'atomstates' in sql.requestables)
     addMoleStates = (not sql.requestables or 'moleculestates' in sql.requestables)
     atoms,molecules,nspecies,nstates = getSpeciesWithStates(transs,addAtomStates,addMoleStates)
+
+    methods = getMethods()
 
     if ntranss:
         size_estimate='%.2f'%(ntranss*0.0014 + 0.01)
@@ -88,7 +106,8 @@ def setupResults(sql):
             'Molecules':molecules,
             'Sources':sources,
             'HeaderInfo':headerinfo,
-            'Environments':Environments #this is set up statically in models.py
+            'Environments':Environments, #this is set up statically in models.py
+            'Methods':methods
            }
 
 # The old way of getting references via linelists.
