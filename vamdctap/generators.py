@@ -182,17 +182,20 @@ def makePrimaryType(tagname, keyword, G, extraAttr={}):
     comment = G("%sComment" % keyword)
     refs = G(keyword + 'Ref') # Sources
 
-    string = "\n<%s" % tagname
+    result = ["\n<%s" % tagname]
     if method:
-        string += ' methodRef="M%s-%s"' % (NODEID, method)
-    for k, v in extraAttr.items():
-        string += ' %s="%s"'% (k, G(v))
-    string += '>'
-    if comment:
-        string += '<Comments>%s</Comments>' % quoteattr('%s' % comment)[1:-1]
-    string += makeSourceRefs(refs)
+        result.append( ' methodRef="M%s-%s"' % (NODEID, method) )
 
-    return string
+    for k, v in extraAttr.items():
+        result.append( ' %s="%s"'% (k, v) )
+
+    result.append( '>' )
+    if comment:
+        result.append( '<Comments>%s</Comments>' %
+                quoteattr('%s' % comment)[1:-1] )
+    result.append( makeSourceRefs(refs) )
+
+    return ''.join(result)
 
 def makeRepeatedDataType(tagname, keyword, G, extraAttr={}):
     """
@@ -218,11 +221,12 @@ def makeRepeatedDataType(tagname, keyword, G, extraAttr={}):
     # if some are shorter than the value list, replicate them
     l = len(value)
     value, unit, method, comment, acc, refs, name = [ x*l if len(x)<l else x for x in [value, unit, method, comment, acc, refs, name]]
-
+    
     for k, v in extraAttr.items():
         if not isiterable(v): v=[v]*l
         elif len(v)<l: v*=l
-
+        extraAttr[k] = v
+    
     string = ''
     for i, val in enumerate(value):
         string += '\n<%s' % tagname
@@ -315,7 +319,7 @@ def makeDataType(tagname, keyword, G, extraAttr={}, extraElem={}):
     if method:
         result.append( ' methodRef="M%s-%s"' % (NODEID, method) )
     for k, v in extraAttr.items():
-        result.append( ' %s="%s"'% (k, G(v)) )
+        result.append( ' %s="%s"'% (k, v) )
     result.append( '>' )
 
     if comment:
@@ -328,7 +332,7 @@ def makeDataType(tagname, keyword, G, extraAttr={}, extraElem={}):
     result.append( '</%s>' % tagname )
 
     for k, v in extraElem.items():
-        result.append( '<%s>%s</%s>' % (k, G(v), k) )
+        result.append( '<%s>%s</%s>' % (k, v, k) )
 
     return ''.join(result)
 
@@ -641,7 +645,7 @@ def XsamsAtoms(Atoms):
             yield makeDataType('IonizationEnergy', 'AtomStateIonizationEnergy', G)
             yield makeDataType('LandeFactor', 'AtomStateLandeFactor', G)
             yield makeDataType('QuantumDefect', 'AtomStateQuantumDefect', G)
-            yield makeRepeatedDataType('LifeTime', 'AtomStateLifeTime', G, extraAttr={"decay":"AtomStateLifeTimeDecay"})
+            yield makeRepeatedDataType('LifeTime', 'AtomStateLifeTime', G, extraAttr={"decay":G("AtomStateLifeTimeDecay")})
             yield makeDataType('Polarizability', 'AtomStatePolarizability', G)
             statweig = G('AtomStateStatisticalWeight')
             if statweig:
@@ -839,7 +843,7 @@ def XsamsMSBuild(MoleculeState):
     yield '  <Description/>'
     yield '  <MolecularStateCharacterisation>'
     yield makeDataType('StateEnergy', 'MoleculeStateEnergy', G,
-                extraAttr={'energyOrigin':'MoleculeStateEnergyOrigin'})
+                extraAttr={'energyOrigin':G('MoleculeStateEnergyOrigin')})
     if G("MoleculeStateTotalStatisticalWeight"):
         yield '  <TotalStatisticalWeight>%s</TotalStatisticalWeight>'\
                     % G("MoleculeStateTotalStatisticalWeight")
@@ -852,7 +856,7 @@ def XsamsMSBuild(MoleculeState):
     if G("MoleculeStateLifeTime"):
         # note: currently only supporting 0..1 lifetimes (xsams dictates 0..3)
         # the decay attr is a string, either: 'total', 'totalRadiative' or 'totalNonRadiative'
-        yield makeDataType('LifeTime','MoleculeStateLifeTime', G, extraAttrs={'decay':'MoleculeStateLifeTimeDecay'})
+        yield makeDataType('LifeTime','MoleculeStateLifeTime', G, extraAttrs={'decay':G('MoleculeStateLifeTimeDecay')})
     if hasattr(MoleculeState, "Parameters"):
         for Parameter in makeiter(MoleculeState.Parameters):
             cont, ret = checkXML(Parameter)
@@ -864,24 +868,24 @@ def XsamsMSBuild(MoleculeState):
             if GP("MoleculeStateParametersValueData"):
                 yield makeDataType("ValueData", "MoleculeStateParametersValueData", GP)
             if GP("MoleculeStateParametersVectorData"):
-                yield makePrimaryType("VectorData", "MoleculeStateParametersVectorData", GP, extraAttr={"units":"MoleculeStateParametersVectorUnits"})
+                yield makePrimaryType("VectorData", "MoleculeStateParametersVectorData", GP, extraAttr={"units":GP("MoleculeStateParametersVectorUnits")})
                 if hasattr(Parameter, "Vector"):
                     for VectorValue in makeiter(Parameter.Vector):
                         GPV = lambda name: GetValue(name, VectorValue)
                         yield makePrimaryType("Vector", "MoleculeStateParameterVector", GPV,
-                                              extraAttr={"ref":"MoleculeStateParameterVectorRef",
-                                                         "x3":"MoleculeStateParameterVectorX3",
-                                                         "y3":"MoleculeStateParameterVectorY3",
-                                                         "z3":"MoleculeStateParameterVectorZ3"})
+                                              extraAttr={"ref":GPV("MoleculeStateParameterVectorRef"),
+                                                         "x3":GPV("MoleculeStateParameterVectorX3"),
+                                                         "y3":GPV("MoleculeStateParameterVectorY3"),
+                                                         "z3":GPV("MoleculeStateParameterVectorZ3")})
                         yield "</Vector>"
                 yield "</VectorData>"
             if GP("MoleculeStateParametersMatrixData"):
                 yield makePrimaryType("MatrixData", "MoleculeStateParametersMatrixData", GP,
-                                      extraAttr={"units":"MoleculeStateParametersMatrixUnits",
-                                                 "nrows":"MoleculeStateParametersMatrixNrows",
-                                                 "ncols":"MoleculeStateParametersMatrixNcols",
-                                                 "form":"MoleculeStateParametersMatrixForm",
-                                                 "values":"MoleculeStateParametersMatrixValues"})
+                                      extraAttr={"units":GP("MoleculeStateParametersMatrixUnits"),
+                                                 "nrows":GPV("MoleculeStateParametersMatrixNrows"),
+                                                 "ncols":GP("MoleculeStateParametersMatrixNcols"),
+                                                 "form":GP("MoleculeStateParametersMatrixForm"),
+                                                 "values":GP("MoleculeStateParametersMatrixValues")})
                 yield "<RowRefs>%s</RowRefs>" % GP("MoleculeStateParametersMatrixDataRowRefs") # space-separated list of strings
                 yield "<ColRefs>%s</ColRefs>" % GP("MoleculeStateParametersMatrixDataColRefs") # space-separated list of strings
                 yield "<Matrix>%s</Matrix>" % GP("MoleculeStateParametersMatrixDataMatrix") # space-separated list of strings
@@ -1246,13 +1250,15 @@ def XsamsRadCross(RadCross):
         # create header
 
         G = lambda name: GetValue(name, RadCros=RadCros)
-        dic = {'id':"%s-%s" % (NODEID, G("CrossSectionID")) }
+        dic = {'id':"P%s-%s" % (NODEID, G("CrossSectionID")) }
+
         envRef = G("CrossSectionEnvironment")
         if envRef:
             dic["envRef"] = "E%s-%s" % (NODEID, envRef)
         group = G("CrossSectionGroup")
         if group:
             dic["groupLabel"] = "%s" % group
+
         yield makePrimaryType("AbsorptionCrossSection", "CrossSection", G, extraAttr=dic)
         yield "<Description>%s</Description>" % G("CrossSectionDescription")
 
@@ -1272,7 +1278,7 @@ def XsamsRadCross(RadCross):
         # Note - XSAMS dictates a list of BandAssignments here; but this is probably unlikely to
         # be used; so for simplicity we only assume one band assignment here.
 
-        yield makePrimaryType("BandAssignment", "CrossSectionBand", G, extraAttr={"name":"CrossSectionBandName"})
+        yield makePrimaryType("BandAssignment", "CrossSectionBand", G, extraAttr={"name":G("CrossSectionBandName")})
 
         yield makeDataType("BandCentre", "CrossSectionBandCentre", G)
         yield makeDataType("BandWidth", "CrossSectionBandWidth", G)
@@ -1286,7 +1292,7 @@ def XsamsRadCross(RadCross):
                     continue
 
                 GM = lambda name: GetValue(name, BandMode=BandMode)
-                yield makePrimaryType("Modes", "CrossSectionBandMode", GM, extraAttr={"name":"CrossSectionBandModeName"})
+                yield makePrimaryType("Modes", "CrossSectionBandMode", GM, extraAttr={"name":GM("CrossSectionBandModeName")})
 
                 for deltav, modeid in makeloop("CrossSectionBandMode", GM, "DeltaV", "DeltaVModeID"):
                     if modeid:
@@ -1295,7 +1301,7 @@ def XsamsRadCross(RadCross):
                         yield "<DeltaV>%s</DeltaV>" % deltav
                 yield "</Modes>"
         yield "</BandAssignment>"
-        yield "</CrossSection>"
+        yield "</AbsorptionCrossSection>"
 
 
 def XsamsCollTrans(CollTrans):
@@ -1336,7 +1342,7 @@ def XsamsCollTrans(CollTrans):
 
         # create header
         G = lambda name: GetValue(name, CollTran=CollTran)
-        dic = {'id':"%s-%s" % (NODEID, G("CollisionID")) }
+        dic = {'id':"P%s-%s" % (NODEID, G("CollisionID")) }
         group = G("CollisionGroup")
         if group:
             dic["groupLabel"] = "%s" % group
@@ -1415,7 +1421,7 @@ def XsamsCollTrans(CollTrans):
 
                 GD = lambda name: GetValue(name, DataSet=DataSet)
 
-                yield makePrimaryType("DataSet", "CollisionDataSet", GD, extraAttr={"dataDescription":"CollisionDataSetDescription"})
+                yield makePrimaryType("DataSet", "CollisionDataSet", GD, extraAttr={"dataDescription":GD("CollisionDataSetDescription")})
 
                 # Fit data
                 if hasattr(DataSet, "FitData"):

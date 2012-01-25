@@ -75,11 +75,13 @@ RETURNABLES = {\
 # import the unit converter functions
 from vamdctap.unitconv import *
 
+# custom function
 RESTRICTABLES = {\
+'ConstantTest':test_constant_factory('"U"'),
 'AtomSymbol':'species__name',
 'AtomNuclearCharge':'species__atomic',
 'IonCharge':'species__ion',
-'StateEnergy':'lostate__energy',
+'StateEnergy':bothStates,
 'Lower.StateEnergy':'lostate__energy',
 'Upper.StateEnergy':'upstate__energy',
 'RadTransWavelength':'wave',
