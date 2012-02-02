@@ -706,10 +706,11 @@ def XsamsAtoms(Atoms):
             cont, ret = checkXML(AtomState,'CompositionXML')
             if cont:
                 yield ret
-            else:
-                yield makePrimaryType("AtomicComposition", "AtomicStateComposition", G)
-                yield makeAtomComponent(Atom)
-                yield '</AtomicComposition>'
+            else:                
+                if hasattr(Atom, "Components"):
+                    yield makePrimaryType("AtomicComposition", "AtomicStateComposition", G)
+                    yield makeAtomComponent(Atom)
+                    yield '</AtomicComposition>'
 
             yield '</AtomicState>'
         G = lambda name: GetValue(name, Atom=Atom) # reset G() to Atoms, not AtomStates
@@ -728,9 +729,9 @@ def makeNormalMode(G):
     pointgr = G('MoleculeNormalModePointGroupSymmetry')
     id = G('MoleculeNormalModeID')
     extraAttr = {}
-    if elstate: extraAttr['electronicStateRef'] = elstate
+    if elstate: extraAttr['electronicStateRef'] = "S%s-%s" % (NODEID, elstate)
     if pointgr: extraAttr['pointGroupSymmetry'] = pointgr
-    if id: extraAttr['id'] = id
+    if id: extraAttr['id'] = "V%s-%s" % (NODEID, id)
     result = [ makePrimaryType('NormalMode', 'MoleculeNormalMode', G, extraAttr=extraAttr) ]
     result.append( makeDataType('HarmonicFrequency','MoleculeNormalModeHarmonicFrequency',G) )
     result.append( makeDataType('Intensity','MoleculeNormalModeIntensity',G) )
@@ -804,7 +805,7 @@ def XsamsMCSBuild(Molecule):
         yield '</NormalModes>\n'
     elif hasattr(Molecule, 'NormalModes'):
         yield '<NormalModes>\n'
-        for NormalMode in NormalModes:
+        for NormalMode in Molecule.NormalModes:
             GN = lambda name: GetValue(name, NormalMode=NormalMode)
             yield makeNormalMode(GN)
         yield '</NormalModes>\n'
@@ -1136,6 +1137,8 @@ def XsamsRadTranBroadening(G):
         else:
             s.append( makeBroadeningType(G, name=broadening) )
     return ''.join(s)
+    
+
 
 
 def XsamsRadTranShifting(RadTran):
@@ -1151,8 +1154,6 @@ def XsamsRadTranShifting(RadTran):
             eref = G("RadTransShiftingEnv")
             if nam:
                 dic["name"] = nam
-            else:
-                continue
             if eref:
                 dic["envRef"] = "E%s-%s"  % (NODEID, eref)
             string += makePrimaryType("Shifting", "RadTransShifting", G, extraAttr=dic)
@@ -1160,23 +1161,11 @@ def XsamsRadTranShifting(RadTran):
                 for ShiftingParam in Shifting.ShiftingParams:
                     GS = lambda name: GetValue(name, ShiftingParam=ShiftingParam)
                     string += makePrimaryType("ShiftingParameter", "RadTransShiftingParam", GS, extraAttr={"name":GS("RadTransShiftingParamName")})
-                    val = GS("RadTransShiftingParamUnits")
-
+                    val = GS("RadTransShiftingParamUnit")
                     if val:
-                        string += "<Value units='%s'>%s</Value>" % (GS("RadTransShiftingParamUnits"), GS("RadTransShiftingParam" ))
-                        string += makePrimaryType("Accuracy", "RadTransShiftingParamAcc" , GS, extraAttr={"calibration":GS("RadTransShiftingParamAccCalib" ), "quality":GS("RadTransShiftingParamAccQuality")})
-                        systerr = GS("RadTransShiftingParamAccSystematic")
-                        if systerr:
-                            string += "<Systematic confidence=%s relative=%s>%s</Systematic>" % (GS("RadTransShiftingParamAccSystematicConfidence"), GS("RadTransShiftingParamAccSystematicRelative"), systerr)
-                        staterr = GS("RadTransShiftingParamAccStatistical")
-                        if staterr:
-                            string += "<Statistical confidence=%s relative=%s>%s</Statistical>" % (GS("RadTransShiftingParamAccStatisticalConfidence"), GS("RadTransShiftingParamAccStatisticalRelative"), staterr)
-                        stathigh = GS("RadTransShiftingParamAccStatHigh")
-                        statlow = GS("RadTransShiftingParamAccStatLow")
-                        if stathigh and statlow:
-                            string += "<StatHigh confidence=%s relative=%s>%s</StatHigh>" % (GS("RadTransShiftingParamAccStatHighConfidence"), GS("RadTransShiftingParamAccStatHighRelative"), systerr)
-                            string += "<StatLow confidence=%s relative=%s>%s</StatLow>" % (GS("RadTransShiftingParamAccStatLowConfidence"), GS("RadTransShiftingParamAccStatLowRelative"), systerr)
-                        string += "</Accuracy>"
+                        string += "<Value units='%s'>%s</Value>" % (val, GS("RadTransShiftingParam" ))
+                    string += makeAccuracy('RadTransShiftingParam', GS)
+                    
 
                     if hasattr(ShiftingParam, "Fit"):
                         for Fit in makeiter(ShiftingParam.Fits):
@@ -2050,4 +2039,3 @@ def embedhtml(transitions,totalcount=None):
 </RESOURCE>
 </VOTABLE>
 """
-
